@@ -12,10 +12,6 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::fmt;
 
-#[cfg(test)]
-mod test;
-
-
 #[derive(Debug)]
 struct DataInner {
     /// data type
@@ -69,6 +65,7 @@ impl DataInner {
 
 /// Type enum for possible prometheus types
 #[derive(Debug)]
+#[allow(dead_code)]
 enum DataType {
     Gauge,
 }
