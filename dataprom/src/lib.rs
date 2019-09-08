@@ -37,15 +37,6 @@ struct DataInner {
 const SOURCE_TAG_NAME: &str = &"source";
 
 impl DataInner {
-    pub fn new() -> Self {
-        Self {
-            data_type: DataType::Gauge,
-            help: "test".to_string(),
-            name: "test".to_string(),
-            tags: None,
-            data: "2".to_string(),
-        }
-    }
     pub fn print_tags(&self) -> String {
         let mut ret = String::new();
         if self.tags.is_none() {   // end if tags are not there
@@ -141,18 +132,6 @@ pub struct Config {
 }
 
 impl Config {
-    /// playground FIXME: remove
-    fn test(&self, data: Arc<Mutex<HashMap<String, DataInner>>>) {
-        warn!("remove");
-        let mut data = data.lock().unwrap();
-        let mut d = DataInner::new();
-        let mut tags = HashMap::new();
-        tags.insert("host".to_string(), "kloenkX".to_string());
-        tags.insert("hello".to_string(), "world".to_string());
-        d.tags = Some(tags);
-        data.insert("test".to_string(), d);
-    }
-
     /// run server
     pub fn run(self) {
         println!("dataprom: {}", env!("CARGO_PKG_VERSION"));
@@ -173,7 +152,6 @@ impl Config {
         let source = Source ( self.source.clone() );
         let data = Data (Arc::new(Mutex::new(HashMap::new())));
         let delete = Delete (self.delete);
-        self.test(Arc::clone(&data.0));
 
         // launch rocket
         rocket::custom(config)
