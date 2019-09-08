@@ -36,6 +36,22 @@ fn main() {
                 .value_name("ADDRESS")
                 .help("address to listen on")
                 .takes_value(true)
+        )
+        .arg(
+            Arg::with_name("delete")
+                .long("delete")
+                .short("d")
+                .help("Delete data after prometheus scrape")
+                .case_insensitive(true)
+                .default_value("true")  // FIXME: delte when implementing config file
+        )
+        .arg(
+            Arg::with_name("source")
+                .long("source")
+                .short("s")
+                .value_name("SOURCE")
+                .help("source tag provided to prometheus")
+                .takes_value(true)
         );
     
     if cfg!(feature = "completion") {
@@ -91,6 +107,21 @@ fn main() {
     if let Some(value) = &matches.value_of("address") {
         trace!("set address to {}", value);
         config.address = value.to_string();
+    }
+
+    if let Some(value) = &matches.value_of("source") {
+        trace!("set source to {}", value);
+        config.source = value.to_string();
+    }
+
+    if let Some(value) = &matches.value_of("delete") {
+        if value == &"true" {
+            config.delete = true;
+            trace!("delete data after scrape enabled");
+        } else {
+            config.delete = false;
+            trace!("delete data after scrape disabled");
+        }
     }
 
     drop(matches);  // removed parsed arguments

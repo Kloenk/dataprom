@@ -15,29 +15,6 @@ use std::fmt;
 #[cfg(test)]
 mod test;
 
-/// Enclousor around HashMap for Prometheus tag fields
-#[derive(Debug)]
-struct PrometheusTags (HashMap<String, String>);
-
-impl PrometheusTags {
-    pub fn new() -> Self {
-        Self ( HashMap::new() )
-    }
-}
-
-impl fmt::Display for PrometheusTags {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut ret = String::new();
-        for (k, v) in &self.0 {
-            if ret.is_empty() {
-                ret = format!("{}=\"{}\"", k, v);
-            } else {
-                ret = format!("{},{}=\"{}\"", ret, k, v);
-            }
-        }
-        write!(f, "{}", ret)
-    }
-}
 
 #[derive(Debug)]
 struct DataInner {
@@ -51,7 +28,7 @@ struct DataInner {
     name: String,
 
     /// optional tags for prometheus
-    tags: Option<PrometheusTags>,
+    tags: Option<HashMap<String, String>>,
 
     /// Data field
     data: String,
@@ -69,11 +46,26 @@ impl DataInner {
             data: "2".to_string(),
         }
     }
+    pub fn print_tags(&self) -> String {
+        let mut ret = String::new();
+        if self.tags.is_none() {   // end if tags are not there
+            return ret;
+        }
+        let map = self.tags.as_ref().unwrap();
+        for (k, v) in map.iter() {
+            if ret.is_empty() {
+                ret = format!("{}=\"{}\"", k, v);
+            } else {
+                ret = format!("{},{}=\"{}\"", ret, k, v);
+            }
+        }
+        ret
+    }
     pub fn print(&self, source: &str) -> String {
         let tags = match &self.tags {
             None => String::new(),
-            Some(tags) => {
-                format!(",{}", tags)
+            Some(_) => {
+                format!(",{}", self.print_tags())
             },
         };
         format!(r#"# HELP {} {}
@@ -91,6 +83,7 @@ enum DataType {
 }
 
 impl fmt::Display for DataType {
+    #[allow(unused_assignments)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut ret = String::new();
         match self {
@@ -100,17 +93,33 @@ impl fmt::Display for DataType {
     }
 }
 
+/// manage Source String for rocket threading
+struct Source(String);
+
+/// delete data if prometheus scrapes
+struct Delete(bool);
+
 /// manage datatype for rocket thread
 struct Data(Arc<Mutex<HashMap<String, DataInner>>>);
 
 impl Data {
-    fn print(&self, clear: bool) -> String {
+    fn print(&self, clear: bool, source: &str) -> String {
         let mut ret = String::new();
 
         let mut data = self.0.lock().unwrap();
-        for (k, v) in data.iter() {
-            println!("key: {}", k);
-            println!("value: {}", v.print("test"));
+
+        if clear {
+            debug!("clear data");
+            for (k, v) in data.drain() {
+                trace!("print data: {}", k);
+                ret.push_str(&v.print(source));
+            }
+        } else {
+            debug!("keep data alive");
+            for (k, v) in data.iter() {
+                trace!("print data: {}", k);
+                ret.push_str(&v.print(source));
+            }
         }
 
         ret
@@ -123,6 +132,12 @@ pub struct Config {
 
     /// http port for rocket to listen on
     pub port: u16,
+
+    /// source tag for prometheus data
+    pub source: String,
+
+    /// if true data will be deleted at prometheus scrape
+    pub delete: bool,
 }
 
 impl Config {
@@ -131,9 +146,9 @@ impl Config {
         warn!("remove");
         let mut data = data.lock().unwrap();
         let mut d = DataInner::new();
-        let mut tags = PrometheusTags::new();
-        tags.0.insert("host".to_string(), "kloenkX".to_string());
-        tags.0.insert("hello".to_string(), "world".to_string());
+        let mut tags = HashMap::new();
+        tags.insert("host".to_string(), "kloenkX".to_string());
+        tags.insert("hello".to_string(), "world".to_string());
         d.tags = Some(tags);
         data.insert("test".to_string(), d);
     }
@@ -155,13 +170,17 @@ impl Config {
 
 
         // create Data
+        let source = Source ( self.source.clone() );
         let data = Data (Arc::new(Mutex::new(HashMap::new())));
+        let delete = Delete (self.delete);
         self.test(Arc::clone(&data.0));
 
         // launch rocket
         rocket::custom(config)
             .mount("/", routes![metrics])
             .manage(data)
+            .manage(source)
+            .manage(delete)
             .launch();
     }
 }
@@ -171,6 +190,8 @@ impl Default for Config {
         Self {
             port: 9091,
             address: "127.0.0.1".to_string(),
+            source: "dataprom".to_string(),
+            delete: false,
         }
     }
 }
@@ -178,10 +199,15 @@ impl Default for Config {
 use rocket::response::Response;
 
 #[get("/metrics")]
-fn metrics(data: State<Data>) -> Response {
+fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delete>) -> Response<'a> {
+    debug!("got request");
+    let mut response = data.print(delete.0, &source.0);
+    response.push_str(&format!("\n# dataprom/export_prometheus {}", env!("CARGO_PKG_VERSION")));
     Response::build()
         .status(rocket::http::Status::Ok)
         .raw_header("Content-Type", "text/plain; version=0.0.4")
-        .sized_body(std::io::Cursor::new(data.print(false)))
+        .raw_header("Server", "dataprom/export_prometheus")
+        .raw_header("Cache_Control", "no-cache")
+        .sized_body(std::io::Cursor::new(response))
         .finalize()
 }
