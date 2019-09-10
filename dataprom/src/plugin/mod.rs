@@ -1,3 +1,4 @@
+use std::sync::{Arc, Mutex};
 
 
 pub(crate) mod test;   // TODO: REMOVE?
@@ -55,8 +56,8 @@ impl DataOut {
 
 
     /// add to Data
-    fn add_to_data(&self, data: super::Data) {
-        let mut data = data.0.lock().unwrap();
+    fn add_to_data(&self, data: Arc<Mutex<HashMap<String, super::DataInner>>>) {
+        let mut data = data.lock().unwrap();
 
         let data_type = super::DataType::Gauge;
 
@@ -87,14 +88,17 @@ impl Plugins {
             plugins: HashMap::new(),
         }
     }
-    pub(crate) fn execute(&self, name: String, data: String) -> bool {
-        let data = DataIn::new(&name, &data);
+    pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>) -> bool {
+        let data_in = DataIn::new(&name, &data);
         let plugin = self.plugins.get(&name);
         if plugin.is_none() {
             return false;
         }
         let plugin: &Box<dyn Plugin> = plugin.unwrap();
-        println!("name: {}", plugin.name());
+        let data_out = plugin.parse(data_in);
+        for v in data_out {
+            v.add_to_data(Arc::clone(&data_pool));
+        }
         
 
         true

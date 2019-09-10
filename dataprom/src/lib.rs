@@ -75,12 +75,10 @@ enum DataType {
 }
 
 impl fmt::Display for DataType {
-    #[allow(unused_assignments)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut ret = String::new();
-        match self {
-            DataType::Gauge => {ret = "gauge".to_string()},
-        }
+        let ret = match self {
+            DataType::Gauge => "gauge".to_string(),
+        };
         write!(f, "{}", ret)
     }
 }
@@ -93,6 +91,10 @@ struct Delete(bool);
 
 /// manage datatype for rocket thread
 struct Data(Arc<Mutex<HashMap<String, DataInner>>>);
+
+use std::sync::mpsc::Sender;
+/// managed datatype for the plugin thread sender
+struct SenderManage(Arc<Mutex<Sender<Message>>>);
 
 impl Data {
     fn print(&self, clear: bool, source: &str) -> String {
@@ -156,13 +158,15 @@ impl Config {
 
         // create Data
         let source = Source ( self.source.clone() );
-        let data = Data (Arc::new(Mutex::new(HashMap::new())));
+        let data = Arc::new(Mutex::new(HashMap::new()));
         let delete = Delete (self.delete);
 
         // create plugin data channels
-        use std::sync::mpsc::{Sender, Receiver, channel};
-        let data_thread = Arc::new(&data);
+        use std::sync::mpsc::{Receiver, channel};
+        let data_thread = Arc::clone(&data);
         let (tx, rx): (Sender<Message>, Receiver<Message>) = channel();
+        let data = Data (data);
+        let sender = SenderManage (Arc::new(Mutex::new(tx)));
 
         // create Plugin database
         std::thread::spawn(move || {
@@ -176,8 +180,9 @@ impl Config {
                         return;
                     },
                     Message::Add(name, data_str) => {
-                        let data = data_thread.0.lock().unwrap();
-                        plugins.execute(name.to_string(), data_str.to_string());
+                        trace!("got data in plugin thread: {} {}", name, data_str);
+                        //let data = data_thread.lock().unwrap();
+                        plugins.execute(name.to_string(), data_str.to_string(), Arc::clone(&data_thread));
                     }
                 }
             }
@@ -189,6 +194,7 @@ impl Config {
             .manage(data)
             .manage(source)
             .manage(delete)
+            .manage(sender)
             .launch();
     }
 }
@@ -246,8 +252,10 @@ fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delet
 }
 
 #[post("/", data = "<input>")]
-fn post_root<'a>(data: State<'a, Data>, input: String, header: HeaderPayload) -> Response<'a> {
+fn post_root<'a>(data: State<'a, Data>, sender: State<SenderManage>, input: String, header: HeaderPayload) -> Response<'a> {
     trace!("got request, data: {}, with name: {}", input, header.name);
+    let sender = sender.0.lock().unwrap();
+    sender.send(Message::Add(header.name, input)).unwrap();
 
     Response::build()
         .status(rocket::http::Status::Ok)

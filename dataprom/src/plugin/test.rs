@@ -22,6 +22,7 @@ impl Plugin for Test {
 
     }
     fn parse(&self, data: DataIn) -> Vec<DataOut> {
+        trace!("test_plugin: parse {}", data.data);
         if data.collector_name.unwrap() != self.p_name {
             panic!("wrong data");
         }
