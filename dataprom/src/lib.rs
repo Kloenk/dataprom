@@ -12,6 +12,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::fmt;
 
+
+/// Plugin traits and buildtins
+pub mod plugin;
+
 #[derive(Debug)]
 struct DataInner {
     /// data type
@@ -95,7 +99,7 @@ impl Data {
         let mut ret = String::new();
 
         let mut data = self.0.lock().unwrap();
-
+ 
         if clear {
             debug!("clear data");
             for (k, v) in data.drain() {
@@ -112,6 +116,11 @@ impl Data {
 
         ret
     }
+}
+
+pub(crate) enum Message {
+    Quit,
+    Add(String, String),
 }
 
 pub struct Config {
@@ -150,9 +159,33 @@ impl Config {
         let data = Data (Arc::new(Mutex::new(HashMap::new())));
         let delete = Delete (self.delete);
 
+        // create plugin data channels
+        use std::sync::mpsc::{Sender, Receiver, channel};
+        let data_thread = Arc::new(&data);
+        let (tx, rx): (Sender<Message>, Receiver<Message>) = channel();
+
+        // create Plugin database
+        std::thread::spawn(move || {
+            let mut plugins = plugin::Plugins::new();
+            let testPlugin = plugin::test::Test::new("test".to_string());
+            plugins.add(Box::new(testPlugin));
+            println!("count: {}", plugins.counter);
+            for message in rx.iter() {
+                match message {
+                    Message::Quit => {
+                        return;
+                    },
+                    Message::Add(name, data_str) => {
+                        let data = data_thread.0.lock().unwrap();
+                        plugins.execute(name.to_string(), data_str.to_string());
+                    }
+                }
+            }
+        });
+
         // launch rocket
         rocket::custom(config)
-            .mount("/", routes![metrics])
+            .mount("/", routes![metrics, post_root])
             .manage(data)
             .manage(source)
             .manage(delete)
@@ -173,6 +206,31 @@ impl Default for Config {
 
 use rocket::response::Response;
 
+struct HeaderPayload {
+    name: String,
+}
+
+// X-dataprom-name
+use rocket::request::Outcome;
+use rocket::Request;
+impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for HeaderPayload {
+    type Error = String;
+
+    fn from_request(request: &'a Request<'r>) -> Outcome<Self, String> {
+        let keys = request.headers().get_one("X-dataprom-name");
+        if keys.is_none() {
+            return Outcome::Failure(
+                (
+                    rocket::http::Status::new(400, "no name header"),
+                    String::from("return"),
+                )
+            );
+        }
+
+        Outcome::Success(HeaderPayload{name: keys.unwrap().to_string()})
+    }
+}
+
 #[get("/metrics")]
 fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delete>) -> Response<'a> {
     debug!("got request");
@@ -184,5 +242,14 @@ fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delet
         .raw_header("Server", "dataprom/export_prometheus")
         .raw_header("Cache_Control", "no-cache")
         .sized_body(std::io::Cursor::new(response))
+        .finalize()
+}
+
+#[post("/", data = "<input>")]
+fn post_root<'a>(data: State<'a, Data>, input: String, header: HeaderPayload) -> Response<'a> {
+    trace!("got request, data: {}, with name: {}", input, header.name);
+
+    Response::build()
+        .status(rocket::http::Status::Ok)
         .finalize()
 }
