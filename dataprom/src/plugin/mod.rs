@@ -19,6 +19,9 @@ pub struct DataIn {
 
     /// Data got from the collector
     pub data: String,
+
+    /// tags defined in the header
+    pub tags: Option<Vec<String>>,
 }
 
 impl DataIn {
@@ -26,6 +29,7 @@ impl DataIn {
         Self {
             collector_name: Some(name.to_string()),
             data: data.to_string(),
+            tags: None,
         }
     }
 }
@@ -88,8 +92,9 @@ impl Plugins {
             plugins: HashMap::new(),
         }
     }
-    pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>) -> bool {
-        let data_in = DataIn::new(&name, &data);
+    pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>, tags: Option<Vec<String>>) -> bool {
+        let mut data_in = DataIn::new(&name, &data);
+        data_in.tags = tags;
         let plugin = self.plugins.get(&name);
         if plugin.is_none() {
             return false;

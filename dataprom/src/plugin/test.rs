@@ -27,13 +27,32 @@ impl Plugin for Test {
             panic!("wrong data");
         }
         let mut data_vec = Vec::new();
+
+        let mut tags: Option<std::collections::HashMap<String, String>> = None;
+        if data.tags.is_some() {
+            trace!("tags: {:?}", &data.tags);
+            let mut tags_vec = std::collections::HashMap::new();
+            let tags_orig = data.tags.unwrap();
+            let tags_orig: Vec<&str> = tags_orig[0].split("; ").collect();    // FIXME
+            for v in tags_orig {
+                let vec: Vec<&str> = v.split("=").collect();
+                if vec.len() != 2 {
+                    warn!("invalid lenght of array size: {} ({:?})", vec.len(), vec);
+                    continue;
+                }
+                tags_vec.insert(vec[0].to_string(), vec[1].to_string());
+            }
+            tags = Some(tags_vec);
+        }
+
+        let name_list = format!("{}_{:?}", self.p_name, tags);
         
         let data = DataOut {
-            name: self.p_name.clone(),
+            name: name_list,
             help: "test data".to_string(),
             prometheus_name: "test_data".to_string(),
             data: data.data,
-            tags: None,
+            tags: tags,
         };
         data_vec.push(data);
         data_vec

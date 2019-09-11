@@ -61,7 +61,8 @@ impl DataInner {
         };
         format!(r#"# HELP {} {}
 # TYPE {} {}
-{}{{{}="{}"{}}} {}"#, self.name, self.help,
+{}{{{}="{}"{}}} {}
+"#, self.name, self.help,
             self.name, self.data_type,
             self.name, SOURCE_TAG_NAME, source, tags, self.data)
     }
@@ -122,7 +123,7 @@ impl Data {
 
 pub(crate) enum Message {
     Quit,
-    Add(String, String),
+    Add(String, String, Option<Vec<String>>),
 }
 
 pub struct Config {
@@ -179,10 +180,10 @@ impl Config {
                     Message::Quit => {
                         return;
                     },
-                    Message::Add(name, data_str) => {
+                    Message::Add(name, data_str, tags) => {
                         trace!("got data in plugin thread: {} {}", name, data_str);
                         //let data = data_thread.lock().unwrap();
-                        plugins.execute(name.to_string(), data_str.to_string(), Arc::clone(&data_thread));
+                        plugins.execute(name.to_string(), data_str.to_string(), Arc::clone(&data_thread), tags);
                     }
                 }
             }
@@ -214,6 +215,7 @@ use rocket::response::Response;
 
 struct HeaderPayload {
     name: String,
+    tags: Option<Vec<String>>,
 }
 
 // X-dataprom-name
@@ -223,6 +225,14 @@ impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for HeaderPayload {
     type Error = String;
 
     fn from_request(request: &'a Request<'r>) -> Outcome<Self, String> {
+        let mut tags = Vec::new();
+        for v in request.headers().get("X-dataprom-tags") {
+            tags.push(v.to_string());
+        }
+        let tags = match tags.len() {
+            0 => None,
+            _ => Some(tags),
+        };
         let keys = request.headers().get_one("X-dataprom-name");
         if keys.is_none() {
             return Outcome::Failure(
@@ -233,7 +243,7 @@ impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for HeaderPayload {
             );
         }
 
-        Outcome::Success(HeaderPayload{name: keys.unwrap().to_string()})
+        Outcome::Success(HeaderPayload{name: keys.unwrap().to_string(), tags})
     }
 }
 
@@ -255,7 +265,7 @@ fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delet
 fn post_root<'a>(data: State<'a, Data>, sender: State<SenderManage>, input: String, header: HeaderPayload) -> Response<'a> {
     trace!("got request, data: {}, with name: {}", input, header.name);
     let sender = sender.0.lock().unwrap();
-    sender.send(Message::Add(header.name, input)).unwrap();
+    sender.send(Message::Add(header.name, input, header.tags)).unwrap();
 
     Response::build()
         .status(rocket::http::Status::Ok)
