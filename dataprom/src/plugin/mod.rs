@@ -1,7 +1,9 @@
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "test")]
+pub(crate) mod test;
 
-pub(crate) mod test;   // TODO: REMOVE?
+pub(crate) mod buildins;
 
 pub trait Plugin {
     fn init(&mut self);
@@ -92,12 +94,16 @@ impl Plugins {
             plugins: HashMap::new(),
         }
     }
+    pub(crate) fn count(&self) -> u32 {
+        self.counter
+    }
     #[allow(clippy::borrowed_box)]
     pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>, tags: Option<Vec<String>>) -> bool {
         let mut data_in = DataIn::new(&name, &data);
         data_in.tags = tags;
         let plugin = self.plugins.get(&name);
         if plugin.is_none() {
+            warn!("no plugin for data {} found", name);
             return false;
         }
         let plugin: &Box<dyn Plugin> = plugin.unwrap();

@@ -7,9 +7,9 @@ pub(crate) struct Test {
 }
 
 impl Test {
-    pub(crate) fn new(name: String) -> Self {
+    pub(crate) fn new(name: &str) -> Self {
         Self {
-            p_name: name,
+            p_name: name.to_string(),
         }
     }
 }

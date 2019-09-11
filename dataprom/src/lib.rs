@@ -173,9 +173,8 @@ impl Config {
         // create Plugin database
         std::thread::spawn(move || {
             let mut plugins = plugin::Plugins::new();
-            let test_plugin = plugin::test::Test::new("test".to_string());
-            plugins.add(Box::new(test_plugin));
-            println!("count: {}", plugins.counter);
+            plugin::buildins::add_defaults(&mut plugins);
+            info!("loaded {} plugins", plugins.count());
             for message in rx.iter() {
                 match message {
                     Message::Quit => {
@@ -183,7 +182,6 @@ impl Config {
                     },
                     Message::Add(name, data_str, tags) => {
                         trace!("got data in plugin thread: {} {}", name, data_str);
-                        //let data = data_thread.lock().unwrap();
                         plugins.execute(name.to_string(), data_str.to_string(), Arc::clone(&data_thread), tags);
                     }
                 }
