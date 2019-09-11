@@ -92,6 +92,7 @@ impl Plugins {
             plugins: HashMap::new(),
         }
     }
+    #[allow(clippy::borrowed_box)]
     pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>, tags: Option<Vec<String>>) -> bool {
         let mut data_in = DataIn::new(&name, &data);
         data_in.tags = tags;

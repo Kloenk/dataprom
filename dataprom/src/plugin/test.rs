@@ -28,22 +28,23 @@ impl Plugin for Test {
         }
         let mut data_vec = Vec::new();
 
-        let mut tags: Option<std::collections::HashMap<String, String>> = None;
-        if data.tags.is_some() {
+        let tags = if data.tags.is_some() {
             trace!("tags: {:?}", &data.tags);
             let mut tags_vec = std::collections::HashMap::new();
             let tags_orig = data.tags.unwrap();
             let tags_orig: Vec<&str> = tags_orig[0].split("; ").collect();    // FIXME
             for v in tags_orig {
-                let vec: Vec<&str> = v.split("=").collect();
+                let vec: Vec<&str> = v.split('=').collect();
                 if vec.len() != 2 {
                     warn!("invalid lenght of array size: {} ({:?})", vec.len(), vec);
                     continue;
                 }
                 tags_vec.insert(vec[0].to_string(), vec[1].to_string());
             }
-            tags = Some(tags_vec);
-        }
+            Some(tags_vec)
+        } else {
+            None
+        };
 
         let name_list = format!("{}_{:?}", self.p_name, tags);
         
@@ -52,7 +53,7 @@ impl Plugin for Test {
             help: "test data".to_string(),
             prometheus_name: "test_data".to_string(),
             data: data.data,
-            tags: tags,
+            tags,
         };
         data_vec.push(data);
         data_vec

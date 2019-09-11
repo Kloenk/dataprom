@@ -121,6 +121,7 @@ impl Data {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) enum Message {
     Quit,
     Add(String, String, Option<Vec<String>>),
@@ -172,8 +173,8 @@ impl Config {
         // create Plugin database
         std::thread::spawn(move || {
             let mut plugins = plugin::Plugins::new();
-            let testPlugin = plugin::test::Test::new("test".to_string());
-            plugins.add(Box::new(testPlugin));
+            let test_plugin = plugin::test::Test::new("test".to_string());
+            plugins.add(Box::new(test_plugin));
             println!("count: {}", plugins.counter);
             for message in rx.iter() {
                 match message {
@@ -262,7 +263,7 @@ fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delet
 }
 
 #[post("/", data = "<input>")]
-fn post_root<'a>(data: State<'a, Data>, sender: State<SenderManage>, input: String, header: HeaderPayload) -> Response<'a> {
+fn post_root<'a>(sender: State<SenderManage>, input: String, header: HeaderPayload) -> Response<'a> {
     trace!("got request, data: {}, with name: {}", input, header.name);
     let sender = sender.0.lock().unwrap();
     sender.send(Message::Add(header.name, input, header.tags)).unwrap();
