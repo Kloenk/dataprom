@@ -41,7 +41,7 @@ pub struct DataOut {
     /// name to find in hashmap
     /// should be plugin name and if multiple with a simple suffix
     /// so no doubles are existing
-    /// 
+    ///
     /// This name is not the one existing in prometheus, just used for internal reference
     pub name: String,
 
@@ -59,8 +59,6 @@ pub struct DataOut {
 }
 
 impl DataOut {
-
-
     /// add to Data
     fn add_to_data(&self, data: Arc<Mutex<HashMap<String, super::DataInner>>>) {
         let mut data = data.lock().unwrap();
@@ -76,7 +74,6 @@ impl DataOut {
         };
 
         data.insert(self.name.clone(), data_inner);
-        
     }
 }
 
@@ -98,7 +95,13 @@ impl Plugins {
         self.counter
     }
     #[allow(clippy::borrowed_box)]
-    pub(crate) fn execute(&self, name: String, data: String, data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>, tags: Option<Vec<String>>) -> bool {
+    pub(crate) fn execute(
+        &self,
+        name: String,
+        data: String,
+        data_pool: Arc<Mutex<HashMap<String, super::DataInner>>>,
+        tags: Option<Vec<String>>,
+    ) -> bool {
         let mut data_in = DataIn::new(&name, &data);
         data_in.tags = tags;
         let plugin = self.plugins.get(&name);
@@ -111,7 +114,6 @@ impl Plugins {
         for v in data_out {
             v.add_to_data(Arc::clone(&data_pool));
         }
-        
 
         true
     }

@@ -1,17 +1,18 @@
 // rocket foo
 #![feature(proc_macro_hygiene, decl_macro)]
 
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
 //#[macro_use] extern crate rocket_contrib;
-use rocket::{State};
+use rocket::State;
 
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate env_logger;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use std::fmt;
-
+use std::sync::{Arc, Mutex};
 
 /// Plugin traits and buildtins
 pub mod plugin;
@@ -39,7 +40,8 @@ const SOURCE_TAG_NAME: &str = &"source";
 impl DataInner {
     pub fn print_tags(&self) -> String {
         let mut ret = String::new();
-        if self.tags.is_none() {   // end if tags are not there
+        if self.tags.is_none() {
+            // end if tags are not there
             return ret;
         }
         let map = self.tags.as_ref().unwrap();
@@ -55,16 +57,23 @@ impl DataInner {
     pub fn print(&self, source: &str) -> String {
         let tags = match &self.tags {
             None => String::new(),
-            Some(_) => {
-                format!(",{}", self.print_tags())
-            },
+            Some(_) => format!(",{}", self.print_tags()),
         };
-        format!(r#"# HELP {} {}
+        format!(
+            r#"# HELP {} {}
 # TYPE {} {}
 {}{{{}="{}"{}}} {}
-"#, self.name, self.help,
-            self.name, self.data_type,
-            self.name, SOURCE_TAG_NAME, source, tags, self.data)
+"#,
+            self.name,
+            self.help,
+            self.name,
+            self.data_type,
+            self.name,
+            SOURCE_TAG_NAME,
+            source,
+            tags,
+            self.data
+        )
     }
 }
 
@@ -102,7 +111,7 @@ impl Data {
         let mut ret = String::new();
 
         let mut data = self.0.lock().unwrap();
- 
+
         if clear {
             debug!("clear data");
             for (k, v) in data.drain() {
@@ -157,18 +166,17 @@ impl Config {
             .unwrap();
         trace!("build rocket config");
 
-
         // create Data
-        let source = Source ( self.source.clone() );
+        let source = Source(self.source.clone());
         let data = Arc::new(Mutex::new(HashMap::new()));
-        let delete = Delete (self.delete);
+        let delete = Delete(self.delete);
 
         // create plugin data channels
-        use std::sync::mpsc::{Receiver, channel};
+        use std::sync::mpsc::{channel, Receiver};
         let data_thread = Arc::clone(&data);
         let (tx, rx): (Sender<Message>, Receiver<Message>) = channel();
-        let data = Data (data);
-        let sender = SenderManage (Arc::new(Mutex::new(tx)));
+        let data = Data(data);
+        let sender = SenderManage(Arc::new(Mutex::new(tx)));
 
         // create Plugin database
         std::thread::spawn(move || {
@@ -179,10 +187,15 @@ impl Config {
                 match message {
                     Message::Quit => {
                         return;
-                    },
+                    }
                     Message::Add(name, data_str, tags) => {
                         trace!("got data in plugin thread: {} {}", name, data_str);
-                        plugins.execute(name.to_string(), data_str.to_string(), Arc::clone(&data_thread), tags);
+                        plugins.execute(
+                            name.to_string(),
+                            data_str.to_string(),
+                            Arc::clone(&data_thread),
+                            tags,
+                        );
                     }
                 }
             }
@@ -234,23 +247,31 @@ impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for HeaderPayload {
         };
         let keys = request.headers().get_one("X-dataprom-name");
         if keys.is_none() {
-            return Outcome::Failure(
-                (
-                    rocket::http::Status::new(400, "no name header"),
-                    String::from("return"),
-                )
-            );
+            return Outcome::Failure((
+                rocket::http::Status::new(400, "no name header"),
+                String::from("return"),
+            ));
         }
 
-        Outcome::Success(HeaderPayload{name: keys.unwrap().to_string(), tags})
+        Outcome::Success(HeaderPayload {
+            name: keys.unwrap().to_string(),
+            tags,
+        })
     }
 }
 
 #[get("/metrics")]
-fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delete>) -> Response<'a> {
+fn metrics<'a>(
+    data: State<'a, Data>,
+    source: State<Source>,
+    delete: State<Delete>,
+) -> Response<'a> {
     debug!("got request");
     let mut response = data.print(delete.0, &source.0);
-    response.push_str(&format!("\n# dataprom/export_prometheus {}", env!("CARGO_PKG_VERSION")));
+    response.push_str(&format!(
+        "\n# dataprom/export_prometheus {}",
+        env!("CARGO_PKG_VERSION")
+    ));
     Response::build()
         .status(rocket::http::Status::Ok)
         .raw_header("Content-Type", "text/plain; version=0.0.4")
@@ -261,10 +282,16 @@ fn metrics<'a>(data: State<'a, Data>, source: State<Source>, delete: State<Delet
 }
 
 #[post("/", data = "<input>")]
-fn post_root<'a>(sender: State<SenderManage>, input: String, header: HeaderPayload) -> Response<'a> {
+fn post_root<'a>(
+    sender: State<SenderManage>,
+    input: String,
+    header: HeaderPayload,
+) -> Response<'a> {
     trace!("got request, data: {}, with name: {}", input, header.name);
     let sender = sender.0.lock().unwrap();
-    sender.send(Message::Add(header.name, input, header.tags)).unwrap();
+    sender
+        .send(Message::Add(header.name, input, header.tags))
+        .unwrap();
 
     Response::build()
         .status(rocket::http::Status::Ok)

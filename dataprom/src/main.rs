@@ -1,8 +1,9 @@
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate env_logger;
 
 use clap::{App, Arg, SubCommand};
-use dataprom::{Config};
+use dataprom::Config;
 
 fn main() {
     env_logger::init();
@@ -12,7 +13,7 @@ fn main() {
         .about("Ve.Connect solar controller to prometheus adapter")
         .setting(clap::AppSettings::ColorAuto)
         .setting(clap::AppSettings::ColoredHelp)
-/*         .arg(
+        /*         .arg(
             Arg::with_name("config")
                 .short("c")
                 .long("config")
@@ -27,7 +28,7 @@ fn main() {
                 .short("p")
                 .value_name("PORT")
                 .help("port for the http server")
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("address")
@@ -35,7 +36,7 @@ fn main() {
                 .short("i")
                 .value_name("ADDRESS")
                 .help("address to listen on")
-                .takes_value(true)
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("delete")
@@ -43,7 +44,7 @@ fn main() {
                 .short("d")
                 .help("Delete data after prometheus scrape")
                 .case_insensitive(true)
-                .default_value("true")  // FIXME: delte when implementing config file
+                .default_value("true"), // FIXME: delte when implementing config file
         )
         .arg(
             Arg::with_name("source")
@@ -51,9 +52,9 @@ fn main() {
                 .short("s")
                 .value_name("SOURCE")
                 .help("source tag provided to prometheus")
-                .takes_value(true)
+                .takes_value(true),
         );
-    
+
     if cfg!(feature = "completion") {
         app = app.subcommand(
             SubCommand::with_name("completion")
@@ -80,7 +81,7 @@ fn main() {
                         .long("output"),
                 )
                 .setting(clap::AppSettings::ColorAuto)
-                .setting(clap::AppSettings::ColoredHelp)
+                .setting(clap::AppSettings::ColoredHelp),
         );
     }
 
@@ -92,7 +93,7 @@ fn main() {
             std::process::exit(0);
         }
     }
-    drop(app);  // remove arguemnt parser
+    drop(app); // remove arguemnt parser
 
     let mut config: Config = Default::default();
 
@@ -124,17 +125,16 @@ fn main() {
         }
     }
 
-    drop(matches);  // removed parsed arguments
+    drop(matches); // removed parsed arguments
     config.run();
 }
-
 
 /// create completion
 #[cfg(feature = "completion")]
 fn completion(args: &clap::ArgMatches, app: &mut App) {
     let shell: String = match args.value_of("shell") {
         Some(shell) => shell.to_string(),
-        None => shell()
+        None => shell(),
     };
 
     use clap::Shell;
@@ -166,15 +166,14 @@ fn completion(args: &clap::ArgMatches, app: &mut App) {
         None => Box::new(std::io::stdout()) as Box<dyn Write>,
     });
 
-
     app.gen_completions_to("ttnprom", shell, &mut path);
 }
 
 #[cfg(all(feature = "completion", not(windows)))]
 fn shell() -> String {
     let shell: String = match std::env::var("SHELL") {
-            Ok(shell) => shell,
-            Err(_) => "/bin/bash".to_string(),
+        Ok(shell) => shell,
+        Err(_) => "/bin/bash".to_string(),
     };
     let shell = std::path::Path::new(&shell);
     match shell.file_name() {
@@ -185,7 +184,7 @@ fn shell() -> String {
 
 #[cfg(all(feature = "completion", windows))]
 fn shell() -> String {
-    "powershell".to_string()    // always default to powershell on windows
+    "powershell".to_string() // always default to powershell on windows
 }
 
 #[cfg(not(feature = "completion"))]

@@ -1,4 +1,3 @@
-
 use super::Plugin;
 use super::{DataIn, DataOut};
 
@@ -18,9 +17,7 @@ impl Plugin for DataRaw {
     fn name(&self) -> String {
         self.p_name.clone()
     }
-    fn init(&mut self) {
-
-    }
+    fn init(&mut self) {}
     fn parse(&self, data: DataIn) -> Vec<DataOut> {
         trace!("test_plugin: parse {}", data.data);
         if data.collector_name.unwrap() != self.p_name {
@@ -32,7 +29,7 @@ impl Plugin for DataRaw {
             trace!("tags: {:?}", &data.tags);
             let mut tags_vec = std::collections::HashMap::new();
             let tags_orig = data.tags.unwrap();
-            let tags_orig: Vec<&str> = tags_orig[0].split("; ").collect();    // FIXME
+            let tags_orig: Vec<&str> = tags_orig[0].split("; ").collect(); // FIXME
             for v in tags_orig {
                 let vec: Vec<&str> = v.split('=').collect();
                 if vec.len() != 2 {
@@ -47,7 +44,7 @@ impl Plugin for DataRaw {
         };
 
         let name_list = format!("{}_{:?}", self.p_name, tags);
-        
+
         let data = DataOut {
             name: name_list,
             help: "test data".to_string(),
