@@ -2,11 +2,11 @@
 use super::Plugin;
 use super::{DataIn, DataOut};
 
-pub(crate) struct Test {
+pub(crate) struct DataRaw {
     p_name: String,
 }
 
-impl Test {
+impl DataRaw {
     pub(crate) fn new(name: &str) -> Self {
         Self {
             p_name: name.to_string(),
@@ -14,7 +14,7 @@ impl Test {
     }
 }
 
-impl Plugin for Test {
+impl Plugin for DataRaw {
     fn name(&self) -> String {
         self.p_name.clone()
     }

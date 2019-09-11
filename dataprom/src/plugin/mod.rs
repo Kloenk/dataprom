@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-#[cfg(feature = "test")]
-pub(crate) mod test;
+#[cfg(feature = "data_raw")]
+pub(crate) mod data_raw;
 
-pub(crate) mod buildins;
+pub(crate) mod builtins;
 
 pub trait Plugin {
     fn init(&mut self);

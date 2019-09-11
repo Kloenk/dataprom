@@ -173,7 +173,7 @@ impl Config {
         // create Plugin database
         std::thread::spawn(move || {
             let mut plugins = plugin::Plugins::new();
-            plugin::buildins::add_defaults(&mut plugins);
+            plugin::builtins::add_defaults(&mut plugins);
             info!("loaded {} plugins", plugins.count());
             for message in rx.iter() {
                 match message {

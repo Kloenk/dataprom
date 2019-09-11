@@ -5,9 +5,9 @@ authors = ["Kloenk <kloenk@kloenk.de>"]
 edition = "2018"
 
 [features]
-default = ["completion", "test"]
+default = ["completion", "data_raw"]
 completion = []
-test = []
+data_raw = []
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
