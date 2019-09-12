@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 pub(crate) mod data_raw;
 
 #[cfg(feature = "ve_protocol")]
-pub(crate) mod VeProtocol;
+pub(crate) mod ve_protocol;
 
 pub(crate) mod builtins;
 

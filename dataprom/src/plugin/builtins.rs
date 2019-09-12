@@ -28,5 +28,5 @@ fn create_ve_protocol() -> Option<Box<dyn Plugin>> {
 #[cfg(feature = "ve_protocol")]
 fn create_ve_protocol() -> Option<Box<dyn Plugin>> {
     info!("ve_protocol enabled");
-    Some(Box::new(super::VeProtocol::VeProtocol::new()))
+    Some(Box::new(super::ve_protocol::VeProtocol::new()))
 }
