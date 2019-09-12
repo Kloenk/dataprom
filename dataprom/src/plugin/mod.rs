@@ -3,6 +3,9 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "data_raw")]
 pub(crate) mod data_raw;
 
+#[cfg(feature = "ve_protocol")]
+pub(crate) mod VeProtocol;
+
 pub(crate) mod builtins;
 
 pub trait Plugin {
