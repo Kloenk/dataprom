@@ -73,9 +73,9 @@ impl Response {
                 Response::Ping{ version: "0.0".to_string(), firmware: FirmwareType::Application}
             },
             '7' => {
-                let id: String = t[1..4].iter().collect();
-                let id = i64::from_str_radix(&id, 16);
-                info!("got {:?}", id);
+                let v: String = t[1..].iter().collect();
+                let v = super::data::Data::parse(&v);
+                info!("data: {:?}", v);
                 Response::Unknown(response.to_string())
             },
             _ => Response::Unknown(response.to_string())    // TODO: reconsider own type for parsing errors?
