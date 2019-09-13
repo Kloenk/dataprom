@@ -1,8 +1,9 @@
 use std::i64;
+use super::data::Data;
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub enum Response {
+pub(crate) enum Response {
     /// Successful execution of the received command.
     /// Payload depends on command.
     /// 
@@ -43,22 +44,14 @@ pub enum Response {
     /// type depends on id - value
     /// 
     /// Code: 7
-    Get {
-        id: u16,
-        flags: u8,
-        value: String,
-    },
+    Get (Data),
 
     /// uint16 - id: of the value being returned
     /// uint8 - flags: defined below
     /// type depends on id - value
     /// 
     /// Code: 8
-    Set {
-        id: u16,
-        flags: u8,
-        value: String,
-    },
+    Set (Data),
 }
 
 impl Response {
@@ -76,7 +69,7 @@ impl Response {
                 let v: String = t[1..].iter().collect();
                 let v = super::data::Data::parse(&v);
                 info!("data: {:?}", v);
-                Response::Unknown(response.to_string())
+                Response::Get(v)
             },
             _ => Response::Unknown(response.to_string())    // TODO: reconsider own type for parsing errors?
         }

@@ -27,8 +27,14 @@ impl Plugin for VeProtocol {
     fn parse(&self, data_in: DataIn) -> Vec<DataOut> {
         let mut ret_vec = Vec::new();
         let data_str: String = data_in.data.trim_matches(':').trim().to_ascii_lowercase();
-        let data_resp = code::Response::parse(&data_str);
-        info!("data: {:?}", data_resp);
+        let data_str: Vec<&str> = data_str.split('\n').collect();
+        for v in data_str {
+            let v = v.trim_matches(':').trim();
+            info!("parse {}", v);
+            let data_resp = code::Response::parse(v);
+            info!("data: {:?}", data_resp);
+        }
+        
 
         ret_vec
     }
