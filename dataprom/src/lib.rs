@@ -225,6 +225,9 @@ impl Default for Config {
 
 use rocket::response::Response;
 
+use rocket::Data as RocketData;
+use std::io::Read;
+
 struct HeaderPayload {
     name: String,
     tags: Option<Vec<String>>,
@@ -281,12 +284,17 @@ fn metrics<'a>(
         .finalize()
 }
 
-#[post("/", data = "<input>")]
+#[post("/", data = "<inputD>")]
 fn post_root<'a>(
     sender: State<SenderManage>,
-    input: String,
+    inputD: RocketData,
     header: HeaderPayload,
 ) -> Response<'a> {
+    let mut input = String::new();
+    match inputD.open().read_to_string(&mut input) {
+        Ok(_) => (),
+        Err(e) => { eprintln!("unable to parse data: {}", e);}
+    }
     trace!("got request, data: {}, with name: {}", input, header.name);
     let sender = sender.0.lock().unwrap();
     sender
