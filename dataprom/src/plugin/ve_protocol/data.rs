@@ -1,7 +1,64 @@
 use std::i64;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub(crate) enum Data {
+    /// Product Id
+    /// *0x0100*
+    /// # Data
+    /// - scale: -
+    /// - type: u16
+    /// - unit: -
+    ProductId(Flags, u16),
+
+    /// Group Id
+    /// *0x0104*
+    /// # Data
+    /// - scale: -
+    /// - type: u8
+    /// - unit: -
+    GroupId(Flags, u8),
+
+    /// Device instance
+    /// *0x0105*
+    /// # Data
+    /// - scale: -
+    /// - type: u8
+    /// - unit: -
+    DeviceInstance(Flags, u8),
+
+    /// Device class
+    /// *0x0106*
+    /// # Data
+    /// - scale: -
+    /// - type: u16
+    /// - unit: -
+    DeviceClass(Flags, u16),
+
+    /// Serial number
+    /// *0x010A*
+    /// # Data
+    /// - scale: -
+    /// - type: String
+    /// - unit: -
+    SerialNumber(Flags, String),
+
+    /// Model name
+    /// *0x010B*
+    /// # Data
+    /// - scale: -
+    /// - type: String
+    /// - unit: -
+    ModelName(Flags, String),
+
+    /// Capabilities
+    /// *0x0140*
+    /// # Data
+    /// - scale: -
+    /// - type: u32
+    /// - unit: -
+    Capabilities(Flags, u32),
+
     /// Battery maximum current
     /// *0xEDF0*
     /// # Data
@@ -18,10 +75,19 @@ impl Data {
         let t: Vec<char> = input.chars().collect();
 
         let addr = parse_u16(&t[0..4]).unwrap_or(0);
-        info!("got address {} to parse", addr);
+        info!("got address {} to parse: {}, len({})", addr, input, input.len());
 
         match addr {
-            0xEDF0 => { // 0xEDF0; Battery maximum current; scale: 0.1; type: u16; unit: A
+            0x0100 => { // Product Id
+                Data::Unknown(input.to_string())
+            },
+            0x0104 => { // Group Id
+                Data::Unknown(input.to_string())
+            },
+            0xEDF0 => { // Battery maximum current
+                if let Some(ret) = Self::check_len(input, 12) {
+                    return ret;
+                }
                 let flags = Flags::parse(&t[4..5]);
 
                 let v = parse_u16(&t[6..10]).unwrap_or(0);
@@ -32,21 +98,13 @@ impl Data {
             }, 
             _ => Data::Unknown(input.to_string())
         }
-
-        /*if input.starts_with("edf0") { // 0xEDF0; Battery maximum current; scale: 0.1; type: u16; unit: A
-            let flags = Flags::parse(&t[4..5]);
-            warn!("use flags: {:?}", flags);
-
-            let v: String = t[6..9].iter().collect();
-            let v = i64::from_str_radix(&v, 16);
-            if v.is_err() {
-                warn!("unable to parse {}, {}", input, v.unwrap_err());
-                return Data::Unknown(input.to_string());
-            }
-            let v = v.unwrap();
-            let v: f32 = (v as f32) / (10.0);
-            return Data::BatteryMaximumCurrent(flags, v);
-        }*/
+    }
+    fn check_len(input: &str, len: usize) -> Option<Self> {
+        if input.len() != len {
+            warn!("invalid len: {} ({})", input.len(), input);
+            return Some(Data::Unknown(input.to_string()));
+        }
+        None
     }
 }
 
